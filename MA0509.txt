@@ -1,0 +1,49 @@
+TR:=MAX(MAX((HIGH-LOW),ABS(REF(CLOSE,1)-HIGH)),ABS(REF(CLOSE,1)-LOW));//真实波幅
+ATR:=MA(TR,26); //求26个周期内真实波幅的简单移动平均
+TC:=1;
+//******MACD默认参数数据*******
+
+DIFF:=EMA(CLOSE,9) - EMA(CLOSE,26);
+DEA:=EMA(DIFF,12);
+MACD:=2*(DIFF-DEA),COLORSTICK;
+JC:=CROSS(DIFF,DEA);//金叉
+SC:=CROSSDOWN(DIFF,DEA);//死叉
+SXJC:=JC && DIFF<=0; //水下金叉
+SSSC:=SC&& DIFF>=0; //水上死叉
+N1NOW:=BARSLAST(JC); //最近一次金叉距离
+N2NOW:=BARSLAST(SC);//最近一次死叉距离
+N1:=BARSLAST(JC)+1; //上次一次金叉距离
+N2:=BARSLAST(SC)+1;//上一次死叉距离
+HH:=VALUEWHEN(CROSSDOWN(DIFF,DEA),HHV(H,N1));//上次MACD红柱期间合约最大值
+HH2:=VALUEWHEN(CROSSDOWN(DIFF,DEA),REF(HH,1));//上上次MACD红柱期间合约最大值
+LL:=VALUEWHEN(CROSS(DIFF,DEA),LLV(L,N2));//上次MACD绿柱期间合约最小值
+LL2:=VALUEWHEN(CROSS(DIFF,DEA),REF(LL,1));//上上次MACD绿柱期间合约最小值
+//**********均线数据**********
+MA1:EMA(C,60);
+MA2:EMA(C,70);
+MA3:EMA(C,80);
+MA4:EMA(C,90);
+MA5:EMA(C,240);
+MAUP:=(MA1>MA2) && (MA2>MA3) && (MA3>MA4)&&(MA4>MA5);
+MADOWN:=(MA1<MA2) && (MA2<MA3) && (MA3<MA4)&&(MA4<MA5);
+
+//开仓条件
+BKALL:=MAUP && SXJC; //均线多头排列，K线回踩形成水下金叉买入
+SKALL:=MADOWN && SSSC;//均线空头排列，K线反弹后形成水上死叉开空
+
+//********首次开仓********
+BKALL && ISLASTBK=0 && ISLASTSK=0 && BARPOS>=26,BK(TC);
+SKALL && ISLASTBK=0 && ISLASTSK=0 && BARPOS>=26,SK(TC);
+
+//******止损设置*********
+C<=LL && BKVOL>0,SP(BKVOL);//最新价小于上MACD的最低价，止损平仓
+C>=HH && SKVOL>0,BP(SKVOL); //最新价大于上次MACD最高价，止损平仓
+//止盈设置
+BKVOL>0 && (BKHIGH-ENTRYSIG_PRICE(1))>=5*ATR && BKHIGH-C>=2*ATR,CLOSEOUT;//盈利后5ATR后，回落大于2ATR退出
+
+TRACING_ORDER(BK,PASSIVE_ORDER,5);
+TRACING_ORDER(SK,PASSIVE_ORDER,5);
+TRACING_ORDER(BP,ACTIVE_ORDER,3);
+TRACING_ORDER(SP,ACTIVE_ORDER,3);
+//MULTSIG(0,0,0,3);
+//AUTOFILTER;
